@@ -77,16 +77,45 @@ npm run start
 
 ## 🌐 Deployment Guidelines
 
-### Option A: Deploy on Vercel
+### Option A: Deploy on Render (Recommended)
+
+#### Method 1: Using Render Blueprint (Automatic & Easiest)
+1. Push this repository to your GitHub account.
+2. Log in to [render.com](https://render.com).
+3. Click **"New +"** $\to$ **"Blueprint"**.
+4. Connect your **`abhishek-boys-hostel`** repository.
+5. Render will automatically detect [`render.yaml`](file:///c:/Users/Admin/Documents/Abhishek%20Boys%20hostel/render.yaml) and configure the build command, start command, and environment variables.
+6. Click **"Apply"** — Render will automatically build, seed the database, and deploy your live website!
+
+#### Method 2: Manual Web Service on Render
+1. Go to [dashboard.render.com](https://dashboard.render.com) and click **"New +"** $\to$ **"Web Service"**.
+2. Select your GitHub repository.
+3. Configure the following fields:
+   - **Name**: `abhishek-boys-hostel`
+   - **Region**: Oregon / Singapore / Frankfurt
+   - **Runtime**: `Node`
+   - **Build Command**: `npm install && npx prisma db push && node prisma/seed.js && npm run build`
+   - **Start Command**: `npm run start`
+   - **Instance Type**: `Free`
+4. Under **Environment Variables**, add:
+   - `DATABASE_URL`: `file:./prisma/dev.db`
+   - `AUTH_SECRET`: `abhishek-hostel-secure-jwt-secret-key-2026-production`
+   - `NEXT_PUBLIC_APP_NAME`: `Abhishek Boys Hostel`
+   - `NEXT_PUBLIC_DEFAULT_FEE`: `5000`
+   - `ADMIN_NAME`: `Mahesh`
+   - `ADMIN_EMAIL`: `admin@abhishekhostel.com`
+   - `ADMIN_PHONE`: `+91 9059860870`
+   - `ADMIN_PASSWORD`: `AdminPassword@2026`
+   - `NODE_VERSION`: `20.18.0`
+5. Click **"Deploy Web Service"**.
+
+---
+
+### Option B: Deploy on Vercel
 1. Push this repository to GitHub.
 2. Import the project into [Vercel](https://vercel.com).
-3. Set the required Environment Variables (`AUTH_SECRET`, etc.).
-4. For persistent storage in serverless environments, connect Prisma to a PostgreSQL/MySQL database (e.g., Supabase, Neon, PlanetScale) or use SQLite on a persistent disk.
-
-### Option B: Deploy on VPS / Render / Railway
-1. Clone the repository on your server.
-2. Configure `.env`.
-3. Run `npm install`, `npx prisma db push`, `npm run build`, and `npm run start` (or use PM2/Docker).
+3. Set the required Environment Variables from `.env.example`.
+4. Click **Deploy**.
 
 ---
 
