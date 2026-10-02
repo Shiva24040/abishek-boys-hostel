@@ -1,25 +1,54 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
-const prisma = new PrismaClient();
+const path = require('path');
+
+const absDbPath = path.resolve(__dirname, 'dev.db').replace(/\\/g, '/');
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: `file:${absDbPath}`,
+    },
+  },
+});
 
 async function main() {
-  console.log('Clearing existing database records...');
+  const userCount = await prisma.user.count().catch(() => 0);
+  if (userCount > 0) {
+    console.log(`Database already populated with ${userCount} users. Preserving existing data.`);
+    // Ensure payment setting exists
+    const paySetting = await prisma.paymentSetting.findFirst().catch(() => null);
+    if (!paySetting) {
+      await prisma.paymentSetting.create({
+        data: {
+          upiId: 'abhishekhostel@upi',
+          phoneNumber: '9059860870',
+          paymentName: 'Abhishek Boys Hostel',
+          qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=abhishekhostel@upi&pn=Abhishek%20Boys%20Hostel&cu=INR',
+          instructions: 'Pay the monthly hostel fee using the above UPI ID or Phone number. Upload your transaction screenshot or receipt for instant verification.',
+          isActive: true,
+        },
+      }).catch(() => {});
+    }
+    return;
+  }
+
+  console.log('Database empty. Seeding initial records...');
   // Clean all tables
-  await prisma.verificationToken.deleteMany();
-  await prisma.document.deleteMany();
-  await prisma.notification.deleteMany();
-  await prisma.visitor.deleteMany();
-  await prisma.expense.deleteMany();
-  await prisma.mealMenu.deleteMany();
-  await prisma.complaint.deleteMany();
-  await prisma.receipt.deleteMany();
-  await prisma.payment.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.student.deleteMany();
-  await prisma.bed.deleteMany();
-  await prisma.room.deleteMany();
-  await prisma.hostelSetting.deleteMany();
-  await prisma.announcement.deleteMany();
+  await prisma.verificationToken.deleteMany().catch(() => {});
+  await prisma.document.deleteMany().catch(() => {});
+  await prisma.notification.deleteMany().catch(() => {});
+  await prisma.visitor.deleteMany().catch(() => {});
+  await prisma.expense.deleteMany().catch(() => {});
+  await prisma.mealMenu.deleteMany().catch(() => {});
+  await prisma.complaint.deleteMany().catch(() => {});
+  await prisma.receipt.deleteMany().catch(() => {});
+  await prisma.payment.deleteMany().catch(() => {});
+  await prisma.user.deleteMany().catch(() => {});
+  await prisma.student.deleteMany().catch(() => {});
+  await prisma.bed.deleteMany().catch(() => {});
+  await prisma.room.deleteMany().catch(() => {});
+  await prisma.hostelSetting.deleteMany().catch(() => {});
+  await prisma.announcement.deleteMany().catch(() => {});
 
   console.log('Creating Hostel Settings...');
   await prisma.hostelSetting.create({
