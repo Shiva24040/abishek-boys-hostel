@@ -1,0 +1,289 @@
+// Prisma schema for Abhishek Boys Hostel Management System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  username      String?   @unique
+  passwordHash  String?
+  name          String
+  role          String    @default("STUDENT") // ADMIN, STUDENT
+  phone         String?   @unique
+  avatar        String?
+  studentId     String?   @unique // Linked student id if role is STUDENT
+  student       Student?  @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  isActive      Boolean   @default(true)
+  emailVerified DateTime?
+  phoneVerified DateTime?
+  lastLogin     DateTime?
+  authProvider  String    @default("credentials") // credentials, google, phone
+  googleId      String?   @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model VerificationToken {
+  id         String   @id @default(uuid())
+  identifier String   // email or phone
+  tokenHash  String   // SHA-256 hash of token or OTP
+  type       String   // "EMAIL_VERIFY", "PASSWORD_RESET", "PHONE_OTP"
+  attempts   Int      @default(0)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, type])
+}
+
+model HostelSetting {
+  id                String   @id @default("default")
+  hostelName        String   @default("Abhishek Boys Hostel")
+  tagline           String   @default("Smart Hostel Management System")
+  address           String   @default("Plot 42, Knowledge Park III, Near Engineering College, Greater Noida, UP")
+  phone             String   @default("+91 98765 43210")
+  email             String   @default("contact@abhishekhostel.com")
+  defaultMonthlyFee Float    @default(5000)
+  feeDueDay         Int      @default(5) // 5th of each month
+  currency          String   @default("₹")
+  upiId             String   @default("abhishekhostel@upi")
+  bankAccount       String   @default("Hostel Management Account - HDFC Bank A/C 50200012345678, IFSC: HDFC0001234")
+  rulesText         String   @default("1. Gate closes strictly at 10:00 PM.\n2. Maintain cleanliness and hygiene in rooms and common spaces.\n3. Alcohol, smoking, and contraband substances are strictly prohibited.\n4. No outside visitors allowed inside resident rooms without warden permission.\n5. Keep noise levels minimal after 10:30 PM.\n6. Report electrical or plumbing faults immediately through the complaint portal.\n7. Monthly fees must be cleared by the 5th of every month.\n8. 30 days prior notice is required before vacating the hostel.")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Room {
+  id          String    @id @default(uuid())
+  roomNumber  String    @unique
+  floor       Int       @default(1)
+  totalBeds   Int       @default(4)
+  roomType    String    @default("Non-AC") // AC, Non-AC, Deluxe
+  amenities   String    @default("Fan, Study Table, Wardrobe, Attached Bathroom, High-speed Wi-Fi")
+  notes       String?
+  beds        Bed[]
+  students    Student[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Bed {
+  id         String   @id @default(uuid())
+  bedNumber  String   // e.g. "Bed 1", "Bed 2"
+  roomId     String
+  room       Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  isOccupied Boolean  @default(false)
+  student    Student?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([roomId, bedNumber])
+}
+
+model Student {
+  id               String      @id @default(uuid())
+  studentId        String      @unique // e.g. "ABH-2026-001"
+  fullName         String
+  phone            String
+  email            String?
+  parentName       String
+  parentPhone      String
+  collegeName      String
+  course           String
+  year             String      @default("1st Year")
+  roomId           String?
+  room             Room?       @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  bedId            String?     @unique
+  bed              Bed?        @relation(fields: [bedId], references: [id], onDelete: SetNull)
+  joiningDate      DateTime    @default(now())
+  leavingDate      DateTime?
+  dob              DateTime?
+  gender           String?     @default("Male")
+  branch           String?
+  address          String
+  city             String?
+  district         String?
+  state            String?
+  pincode          String?
+  emergencyContact String
+  profilePhoto     String?
+  idProofUrl       String?
+  idProofType      String?     @default("Aadhaar Card")
+  status           String      @default("ACTIVE") // ACTIVE, NOTICE_PERIOD, LEFT
+  monthlyFee       Float       @default(5000)
+  securityDeposit  Float       @default(5000)
+  remarks          String?
+  payments         Payment[]
+  receipts         Receipt[]
+  complaints       Complaint[]
+  visitors         Visitor[]
+  documents        Document[]
+  user             User?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+model Payment {
+  id             String    @id @default(uuid())
+  studentId      String
+  student        Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  month          String    // e.g. "October 2026"
+  monthIndex     Int       @default(10) // 1-12
+  year           Int       @default(2026)
+  amount         Float     @default(5000)
+  amountPaid     Float     @default(0)
+  dueDate        DateTime
+  paymentDate    DateTime?
+  status         String    @default("PENDING") // PAID, PENDING, PARTIALLY_PAID, OVERDUE
+  paymentMethod  String?   // CASH, UPI, BANK_TRANSFER, OTHER
+  transactionId  String?
+  remarks        String?
+  receipt        Receipt?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Receipt {
+  id            String    @id @default(uuid())
+  paymentId     String?   @unique
+  payment       Payment?  @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  studentId     String
+  student       Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  month         String
+  amount        Float
+  paymentDate   DateTime  @default(now())
+  paymentMethod String    @default("UPI")
+  transactionId String
+  fileUrl       String
+  fileName      String
+  fileSize      Int       @default(1024)
+  fileType      String    @default("image/jpeg") // image/png, image/jpeg, application/pdf
+  status        String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  adminNotes    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Complaint {
+  id              String    @id @default(uuid())
+  studentId       String?
+  student         Student?  @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  studentName     String
+  roomNumber      String
+  title           String
+  description     String
+  category        String    @default("OTHER") // FAN, LIGHT, WATER, BED, BATHROOM, WIFI, OTHER
+  priority        String    @default("MEDIUM") // LOW, MEDIUM, HIGH, EMERGENCY
+  status          String    @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED
+  resolutionNotes String?
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  category  String   @default("GENERAL") // FEE, MAINTENANCE, HOLIDAY, EVENT, RULE, GENERAL
+  priority  String   @default("NORMAL")  // NORMAL, IMPORTANT, URGENT
+  isActive  Boolean  @default(true)
+  postedBy  String   @default("Chief Warden")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Visitor {
+  id           String    @id @default(uuid())
+  visitorName  String
+  phone        String
+  studentId    String?
+  student      Student?  @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  studentName  String
+  roomNumber   String
+  visitDate    DateTime  @default(now())
+  entryTime    String    // e.g. "04:30 PM"
+  exitTime     String?   // e.g. "06:00 PM"
+  purpose      String
+  idProofType  String?   @default("Aadhaar / Voter ID")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  title       String
+  category    String   @default("OTHER") // ELECTRICITY, WATER, FOOD, MAINTENANCE, INTERNET, CLEANING, SALARIES, OTHER
+  amount      Float
+  date        DateTime @default(now())
+  description String?
+  receiptUrl  String?
+  recordedBy  String   @default("Admin")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MealMenu {
+  id           String   @id @default(uuid())
+  dayOfWeek    String   @unique // Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+  breakfast    String
+  lunch        String
+  snacks       String
+  dinner       String
+  isSpecialDay Boolean  @default(false)
+  notes        String?
+  updatedAt    DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  type      String   @default("SYSTEM") // FEE_DUE, PAYMENT_RECEIVED, STUDENT_REGISTERED, COMPLAINT_CREATED, COMPLAINT_RESOLVED, ANNOUNCEMENT, BED_VACANCY, SYSTEM
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title     String
+  docType   String   @default("ID_PROOF") // ID_PROOF, COLLEGE_ID, AGREEMENT, OTHER
+  fileUrl   String
+  createdAt DateTime @default(now())
+}
+
+model PaymentSetting {
+  id           String   @id @default(uuid())
+  upiId        String   @default("abhishekhostel@upi")
+  phoneNumber  String   @default("9059860870")
+  paymentName  String   @default("Abhishek Boys Hostel")
+  qrCodeUrl    String?
+  instructions String?  @default("Pay the monthly hostel fee using the above UPI ID or Phone number. Upload your transaction screenshot or receipt for instant verification.")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model HostelNotice {
+  id            String    @id @default(uuid())
+  title         String
+  description   String
+  category      String    @default("GENERAL") // GENERAL, FEE_REMINDER, MAINTENANCE, HOLIDAY, MEETING, RULES, EMERGENCY, MESS, OTHER
+  priority      String    @default("NORMAL")  // NORMAL, IMPORTANT, URGENT
+  publishedAt   DateTime  @default(now())
+  expiresAt     DateTime?
+  attachmentUrl String?
+  isActive      Boolean   @default(true)
+  createdBy     String    @default("Chief Warden")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
